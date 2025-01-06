@@ -13,10 +13,10 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Настройка команд для персонажей и кубиков
+# Set up commands for character and dice
 setup_character_commands(bot)
 setup_dice_commands(bot)
 
-# Запуск бота
+# Start the bot
 if __name__ == "__main__":
     bot.run(TOKEN)

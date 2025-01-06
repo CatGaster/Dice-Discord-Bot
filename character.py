@@ -3,7 +3,7 @@ from discord.ext import commands
 from discord.ui import Button, View, Modal, TextInput
 import sqlite3
 
-# Инициализация базы данных
+# Database initialization
 DB_FILE = "user_stats.db"
 
 def init_db():
@@ -25,7 +25,7 @@ def init_db():
     conn.commit()
     conn.close()
 
-# Функции для работы с базой данных
+# Functions for working with the database
 def get_user_stats(user_id):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
@@ -34,15 +34,15 @@ def get_user_stats(user_id):
     conn.close()
     if row:
         return {
-            "Сила": row[1],
-            "Ловкость": row[2],
-            "Стойкость": row[3],
-            "Мудрость": row[4],
-            "Харизма": row[5],
-            "Интеллект": row[6],
+            "Strength": row[1],
+            "Dexterity": row[2],
+            "Constitution": row[3],
+            "Wisdom": row[4],
+            "Charisma": row[5],
+            "Intelligence": row[6],
         }
     else:
-        return {"Сила": 0, "Ловкость": 0, "Стойкость": 0, "Мудрость": 0, "Харизма": 0, "Интеллект": 0}
+        return {"Strength": 0, "Dexterity": 0, "Constitution": 0, "Wisdom": 0, "Charisma": 0, "Intelligence": 0}
 
 def set_user_stat(user_id, stat_name, value):
     conn = sqlite3.connect(DB_FILE)
@@ -56,16 +56,16 @@ def set_user_stat(user_id, stat_name, value):
         (user_id,)
     )
 
-    # Приводим stat_name к нижнему регистру
+    # Convert stat_name to lowercase
     stat_columns = {
-        "сила": "strength",
-        "ловкость": "dexterity",
-        "стойкость": "constitution",
-        "мудрость": "wisdom",
-        "харизма": "charisma",
-        "интеллект": "intelligence",
+        "strength": "strength",
+        "dexterity": "dexterity",
+        "constitution": "constitution",
+        "wisdom": "wisdom",
+        "charisma": "charisma",
+        "intelligence": "intelligence",
     }
-    column_name = stat_columns.get(stat_name.lower())  # Приведение к нижнему регистру
+    column_name = stat_columns.get(stat_name.lower())  # Convert to lowercase
 
     if column_name:
         cursor.execute(f"UPDATE user_stats SET {column_name} = ? WHERE user_id = ?", (value, user_id))
@@ -80,17 +80,17 @@ def setup_character_commands(bot):
 
         view = View()
 
-        # Функция для создания кнопок с уникальными callback
+        # Function to create buttons with unique callbacks
         def create_button(stat_name):
             button = Button(label=stat_name, style=discord.ButtonStyle.primary)
 
             async def stat_button_callback(interaction: discord.Interaction):
                 if interaction.user.id != ctx.author.id:
-                    await interaction.response.send_message("Это не ваш список характеристик!", ephemeral=True)
+                    await interaction.response.send_message("This is not your stat list!", ephemeral=True)
                     return
 
-                stat_modal = Modal(title=f"Установить {stat_name}")
-                stat_input = TextInput(label=f"{stat_name}", placeholder="Введите значение", required=True)
+                stat_modal = Modal(title=f"Set {stat_name}")
+                stat_input = TextInput(label=f"{stat_name}", placeholder="Enter value", required=True)
                 stat_modal.add_item(stat_input)
 
                 async def on_submit(modal_interaction):
@@ -98,10 +98,10 @@ def setup_character_commands(bot):
                         value = int(stat_input.value)
                         set_user_stat(user_id, stat_name, value)
                         await modal_interaction.response.send_message(
-                            f"Значение {stat_name} установлено: {value}", ephemeral=True
+                            f"{stat_name} value set to: {value}", ephemeral=True
                         )
                     except ValueError:
-                        await modal_interaction.response.send_message("Введите числовое значение!", ephemeral=True)
+                        await modal_interaction.response.send_message("Please enter a numeric value!", ephemeral=True)
 
                 stat_modal.on_submit = on_submit
                 await interaction.response.send_modal(stat_modal)
@@ -109,11 +109,11 @@ def setup_character_commands(bot):
             button.callback = stat_button_callback
             return button
 
-        # Создание кнопок для всех характеристик
+        # Create buttons for all stats
         for stat in user_stats:
             view.add_item(create_button(stat))
 
-        await ctx.send("Выберите характеристику для изменения:", view=view)
+        await ctx.send("Choose a stat to change:", view=view)
 
-# Инициализация базы данных при запуске
+# Initialize the database on startup
 init_db()

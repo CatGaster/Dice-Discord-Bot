@@ -5,13 +5,13 @@ import random
 import re
 from character import get_user_stats  
 
-# Функция для броска кубика
+# Function for rolling dice
 def roll_dice(sides, rolls=1):
     return [random.randint(1, sides) for _ in range(rolls)]
 
-tts_enabled = False  # По умолчанию TTS отключен
+tts_enabled = False  # TTS is off by default
 
-# Функция для расчёта модификатора характеристики
+# Function to calculate the stat modifier
 def calculate_modifier(stat_value):
     return (stat_value - 10) // 2
 
@@ -27,11 +27,11 @@ def setup_dice_commands(bot):
             Button(label="1d8 🎲", style=discord.ButtonStyle.primary, custom_id="1d8"),
             Button(label="1d12 🎲", style=discord.ButtonStyle.primary, custom_id="1d12"),
             Button(label="1d20 🎲", style=discord.ButtonStyle.primary, custom_id="1d20"),
-            Button(label="Кастомный кубик", style=discord.ButtonStyle.secondary, custom_id="custom_dice"),
+            Button(label="Custom Dice", style=discord.ButtonStyle.secondary, custom_id="custom_dice"),
         ]
 
         tts_button = Button(
-            label="Отключить TTS 🔇" if tts_enabled else "Включить TTS 🔊",
+            label="Disable TTS 🔇" if tts_enabled else "Enable TTS 🔊",
             style=discord.ButtonStyle.danger if tts_enabled else discord.ButtonStyle.success,
             custom_id="tts_toggle",
         )
@@ -44,11 +44,11 @@ def setup_dice_commands(bot):
         async def dice_button_callback(interaction: discord.Interaction):
             custom_id = interaction.data["custom_id"]
             if custom_id == "custom_dice":
-                custom_modal = Modal(title="Кастомный кубик")
-                sides_input = TextInput(label="Количество граней", placeholder="Например: 10", required=False)
-                rolls_input = TextInput(label="Количество бросков", placeholder="По умолчанию: 1", required=False)
-                stat_input = TextInput(label="Характеристика для модификатора", placeholder="Например: Сила", required=False)
-                extra_dice_input = TextInput(label="Дополнительные кубики", placeholder="Например: 1d4+1d6", required=False)
+                custom_modal = Modal(title="Custom Dice")
+                sides_input = TextInput(label="Number of sides", placeholder="For example: 10", required=False)
+                rolls_input = TextInput(label="Number of rolls", placeholder="Default: 1", required=False)
+                stat_input = TextInput(label="Stat for modifier", placeholder="For example: Strength", required=False)
+                extra_dice_input = TextInput(label="Additional dice", placeholder="For example: 1d4+1d6", required=False)
 
                 custom_modal.add_item(sides_input)
                 custom_modal.add_item(rolls_input)
@@ -58,14 +58,14 @@ def setup_dice_commands(bot):
                 async def on_submit(modal_interaction):
                     try:
                         user_id = str(ctx.author.id)
-                        user_stats = get_user_stats(user_id)  # Получаем данные из базы данных
+                        user_stats = get_user_stats(user_id)  # Get data from the database
                         total = 0
                         result_message = ""
 
-                        # Дополнительные кубики (4 строка)
+                        # Additional dice (line 4)
                         extra_dice = extra_dice_input.value.strip() if extra_dice_input.value else ""
 
-                        # Основной кубик (1 и 2 строки)
+                        # Main dice (lines 1 and 2)
                         if sides_input.value:
                             sides = int(sides_input.value)
                             rolls = int(rolls_input.value) if rolls_input.value else 1
@@ -73,8 +73,8 @@ def setup_dice_commands(bot):
                             total += sum(results)
                             result_message += f"{rolls}d{sides}: {', '.join(map(str, results))}"
 
-                        # Модификатор от характеристики (3 строка)
-                        stat_name = stat_input.value.strip().lower()  # Преобразуем ввод в нижний регистр
+                        # Stat modifier (line 3)
+                        stat_name = stat_input.value.strip().lower()  # Convert input to lowercase
                         modifier = 0
                         user_stats_lower = {key.lower(): value for key, value in user_stats.items()}
 
@@ -83,7 +83,7 @@ def setup_dice_commands(bot):
                             modifier = calculate_modifier(stat_value)
                             total += modifier
 
-                        # Дополнительные кубики (4 строка)
+                        # Additional dice (line 4)
                         if extra_dice:
                             extra_result_strings = []
                             for dice in re.finditer(r"([+-]?)\s*(\d+)d(\d+)", extra_dice):
@@ -105,14 +105,14 @@ def setup_dice_commands(bot):
                                     result_message += " "
                                 result_message += " ".join(extra_result_strings)
 
-                        # Добавляем модификатор к результату, если он есть
+                        # Add modifier to the result if it exists
                         if modifier != 0:
                             result_message += f" (+{modifier} {stat_name})" if modifier > 0 else f" ({modifier} {stat_name})"
 
                         result_message += f" = {total}"
                         await modal_interaction.response.send_message(result_message, tts=tts_enabled)
                     except ValueError:
-                        await modal_interaction.response.send_message("Введите корректные значения!", ephemeral=True)
+                        await modal_interaction.response.send_message("Please enter valid values!", ephemeral=True)
 
                 custom_modal.on_submit = on_submit
                 await interaction.response.send_modal(custom_modal)
@@ -132,12 +132,12 @@ def setup_dice_commands(bot):
         async def tts_button_callback(interaction: discord.Interaction):
             global tts_enabled
             tts_enabled = not tts_enabled
-            tts_button.label = "Отключить TTS 🔇" if tts_enabled else "Включить TTS 🔊"
+            tts_button.label = "Disable TTS 🔇" if tts_enabled else "Enable TTS 🔊"
             tts_button.style = discord.ButtonStyle.danger if tts_enabled else discord.ButtonStyle.success
-            await interaction.response.edit_message(content="Настройки обновлены.", view=view)
+            await interaction.response.edit_message(content="Settings updated.", view=view)
 
         for button in dice_buttons:
             button.callback = dice_button_callback
         tts_button.callback = tts_button_callback
 
-        await ctx.send("Выберите кубик для броска:", view=view)
+        await ctx.send("Choose a dice to roll:", view=view)
