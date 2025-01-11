@@ -1,9 +1,10 @@
 import discord
+from discord import app_commands
 from discord.ext import commands
 from discord.ui import Button, View, Modal, TextInput
 import random
 import re
-from character import get_user_stats  
+from bot_modules.character import get_user_stats
 
 # Функция для броска кубика
 def roll_dice(sides, rolls=1):
@@ -18,6 +19,21 @@ def calculate_modifier(stat_value):
 def setup_dice_commands(bot):
     @bot.command(name="roll_dice", aliases=["rd"])
     async def roll_dice_buttons(ctx):
+        await send_dice_buttons(ctx)
+
+    # Регистрация слэш-команды
+    @app_commands.command(name="roll_dice", description="Выбери кубик для броска 🎲")
+    async def slash_roll_dice(interaction: discord.Interaction):
+        class ContextShim:
+            def __init__(self, interaction):
+                self.author = interaction.user
+                self.send = interaction.response.send_message
+        
+        ctx = ContextShim(interaction)
+        await send_dice_buttons(ctx)
+
+    # Помощьная функция для создания кнопок
+    async def send_dice_buttons(ctx):
         global tts_enabled
 
         dice_buttons = [
@@ -86,31 +102,44 @@ def setup_dice_commands(bot):
                         # Дополнительные кубики (4 строка)
                         if extra_dice:
                             extra_result_strings = []
-                            for dice in re.finditer(r"([+-]?)\s*(\d+)d(\d+)", extra_dice):
-                                sign = dice.group(1) or "+"
-                                extra_rolls = int(dice.group(2))
-                                extra_sides = int(dice.group(3))
-                                extra_roll_results = roll_dice(extra_sides, extra_rolls)
-                                subtotal = sum(extra_roll_results)
-                                if sign == "-":
-                                    total -= subtotal 
-                                    extra_result_strings.append(f"- {extra_rolls}d{extra_sides}: {', '.join(map(str, extra_roll_results))}")
-                                else:
-                                    total += subtotal
-                                    formatted_sign = "" if not result_message and sign == "+" else "+"
-                                    extra_result_strings.append(f"{formatted_sign} {extra_rolls}d{extra_sides}: {', '.join(map(str, extra_roll_results))}")
+                            for item in re.finditer(r"([+-]?)\s*(\d+d\d+|\d+)", extra_dice):
+                                sign = item.group(1) or "+"
+                                value = item.group(2)
 
+                                if "d" in value:  # Это бросок кубиков, например, 2d8
+                                    extra_rolls, extra_sides = map(int, value.split("d"))
+                                    extra_roll_results = roll_dice(extra_sides, extra_rolls)
+                                    subtotal = sum(extra_roll_results)
+
+                                    if sign == "-":
+                                        total -= subtotal
+                                        extra_result_strings.append(f"- {extra_rolls}d{extra_sides}: {', '.join(map(str, extra_roll_results))}")
+                                    else:
+                                        total += subtotal
+                                        extra_result_strings.append(f"+ {extra_rolls}d{extra_sides}: {', '.join(map(str, extra_roll_results))}")
+
+                                else:  # Это числовой модификатор, например, +5
+                                    numeric_modifier = int(value)
+                                    if sign == "-":
+                                        total -= numeric_modifier
+                                        extra_result_strings.append(f"- {numeric_modifier}")
+                                    else:
+                                        total += numeric_modifier
+                                        extra_result_strings.append(f"+ {numeric_modifier}")
+
+                            # Формируем строку результата дополнительных кубиков
                             if extra_result_strings:
                                 if result_message:
                                     result_message += " "
-                                result_message += " ".join(extra_result_strings)
+                                result_message += " ".join(extra_result_strings).lstrip("+ ")
 
-                        # Добавляем модификатор к результату, если он есть
+                        # Добавляем модификатор от характеристики, если есть
                         if modifier != 0:
                             result_message += f" (+{modifier} {stat_name})" if modifier > 0 else f" ({modifier} {stat_name})"
 
+                        # вывод
                         result_message += f" = {total}"
-                        await modal_interaction.response.send_message(result_message, tts=tts_enabled)
+                        await modal_interaction.response.send_message(result_message.strip(), tts=tts_enabled)
                     except ValueError:
                         await modal_interaction.response.send_message("Введите корректные значения!", ephemeral=True)
 
@@ -141,3 +170,5 @@ def setup_dice_commands(bot):
         tts_button.callback = tts_button_callback
 
         await ctx.send("Выберите кубик для броска:", view=view)
+
+    bot.tree.add_command(slash_roll_dice)
