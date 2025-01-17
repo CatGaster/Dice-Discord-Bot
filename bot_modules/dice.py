@@ -19,7 +19,12 @@ def calculate_modifier(stat_value):
 def setup_dice_commands(bot):
     @bot.command(name="roll_dice", aliases=["rd"])
     async def roll_dice_buttons(ctx):
-        await send_dice_buttons(ctx)
+        try:
+            await ctx.message.delete()  # Удаляем сообщение пользователя
+        except discord.errors.Forbidden:
+            pass  # Игнорируем ошибку, если у бота нет прав на удаление сообщений
+
+        await send_dice_buttons(ctx)  # Отправляем сообщение с кнопками
 
     # Регистрация слэш-команды
     @app_commands.command(name="roll_dice", description="Выбери кубик для броска 🎲")
@@ -52,7 +57,7 @@ def setup_dice_commands(bot):
             custom_id="tts_toggle",
         )
 
-        view = View()
+        view = View(timeout=3600)  # Кнопки пропадут и сообщение удалиться через 1 час
         for button in dice_buttons:
             view.add_item(button)
         view.add_item(tts_button)
@@ -139,7 +144,7 @@ def setup_dice_commands(bot):
 
                         # вывод
                         result_message += f" = {total}"
-                        await modal_interaction.response.send_message(result_message.strip(), tts=tts_enabled)
+                        await modal_interaction.response.send_message(result_message.strip(), tts=tts_enabled,delete_after=1800)
                     except ValueError:
                         await modal_interaction.response.send_message("Введите корректные значения!", ephemeral=True)
 
@@ -154,9 +159,9 @@ def setup_dice_commands(bot):
                     total = sum(results)
 
                     if rolls == 1:
-                        await interaction.response.send_message(f"{custom_id}: {results[0]}", tts=tts_enabled)
+                        await interaction.response.send_message(f"{custom_id}: {results[0]}", tts=tts_enabled, delete_after=1800)
                     else:
-                        await interaction.response.send_message(f"{custom_id}: {', '.join(map(str, results))} = {total}", tts=tts_enabled)
+                        await interaction.response.send_message(f"{custom_id}: {', '.join(map(str, results))} = {total}", tts=tts_enabled, delete_after=1800)
 
         async def tts_button_callback(interaction: discord.Interaction):
             global tts_enabled
@@ -169,6 +174,6 @@ def setup_dice_commands(bot):
             button.callback = dice_button_callback
         tts_button.callback = tts_button_callback
 
-        await ctx.send("Выберите кубик для броска:", view=view)
+        await ctx.send("Выберите кубик для броска:", view=view, delete_after=3600) 
 
     bot.tree.add_command(slash_roll_dice)

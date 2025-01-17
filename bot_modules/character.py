@@ -78,7 +78,7 @@ async def send_character_list(ctx):
     user_id = str(ctx.author.id)
     user_stats = get_user_stats(user_id)
 
-    view = View()
+    view = View(timeout=600) # сообщение перестанет работать и удалиться через 10 минут
 
     # Функция для создания кнопок с уникальными callback
     def create_button(stat_name):
@@ -113,7 +113,7 @@ async def send_character_list(ctx):
     for stat in user_stats:
         view.add_item(create_button(stat))
 
-    await ctx.send("Выберите характеристику для изменения:", view=view)
+    await ctx.send("Выберите характеристику для изменения:", view=view, delete_after=600)  
 
 # Инициализация базы данных при запуске
 init_db()
@@ -121,6 +121,11 @@ init_db()
 def setup_character_commands(bot):
     @bot.command(name="character_list", aliases=["cl"])
     async def character_list(ctx):
+        try:
+            await ctx.message.delete() # Удаляем сообщение пользователя, вызвавшего команду
+        except discord.errors.Forbidden:
+            pass  # Игнорируем ошибку, если у бота нет прав на удаление сообщений
+
         await send_character_list(ctx)
 
     # Регистрация слэш-команды

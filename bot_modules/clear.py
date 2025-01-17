@@ -20,6 +20,12 @@ def setup_clear_commands(bot: commands.Bot):
     # Префиксная команда
     @bot.command(name="clear_bot_messages", aliases=["clear_bot"])
     async def clear_bot_messages_prefix(ctx: commands.Context, limit: int = 10):
+
+        try:
+            await ctx.message.delete()
+        except discord.errors.Forbidden:
+            pass  # Игнорируем ошибку, если у бота нет прав на удаление сообщений 
+        
         if limit > DELETE_LIMIT:
             await ctx.send(f"Вы можете удалить не более {DELETE_LIMIT} сообщений за один раз.", ephemeral=True)
             return
@@ -53,7 +59,7 @@ def setup_clear_commands(bot: commands.Bot):
 
             # Отправка только итогового сообщения
             if deleted_count > 0:
-                await send_message(f"Удалено {deleted_count} сообщений от бота.", ephemeral=True)
+                await send_message(f"Удалено {deleted_count} сообщений от бота.", ephemeral=True, delete_after=10) 
             else:
                 await send_message("Сообщения не были удалены.", ephemeral=True)
 
