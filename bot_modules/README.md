@@ -116,6 +116,7 @@ The `character.py` module provides functionality for managing user attributes in
    - Wisdom
    - Charisma
    - Intelligence
+   - Level
 
 ### Main Functions
 
@@ -123,7 +124,7 @@ The `character.py` module provides functionality for managing user attributes in
 - **Description:** Initializes the SQLite database by creating the `user_stats` table if it does not exist.
 - **Table Contains:**
   - `user_id` (str): User ID.
-  - `strength`, `dexterity`, `constitution`, `wisdom`, `charisma`, `intelligence` (int): Attribute values.
+  - `strength`, `dexterity`, `constitution`, `wisdom`, `charisma`, `intelligence`, `Level`. (int): Attribute values.
 
 #### `get_user_stats(user_id)`
 - **Description:** Returns the current attributes of the user as a dictionary.
@@ -166,7 +167,7 @@ The `character.py` module provides functionality for managing user attributes in
 ### Example Interaction
 
 1. The user enters the command `!character_list` or `/character_list`.
-2. The bot sends a message with buttons: "Strength", "Dexterity", "Constitution", "Wisdom", "Charisma", "Intelligence".
+2. The bot sends a message with buttons: "Strength", "Dexterity", "Constitution", "Wisdom", "Charisma", "Intelligence", "Level".
 3. The user clicks the "Strength" button.
 4. The bot opens a modal for entering the new value.
 5. The user enters the value, for example, `12`.

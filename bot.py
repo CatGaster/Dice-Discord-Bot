@@ -7,6 +7,7 @@ from bot_modules.character import setup_character_commands
 from bot_modules.dice import setup_dice_commands
 from bot_modules.clear import setup_clear_commands
 
+
 load_dotenv()
 
 TOKEN = os.getenv("DISCORD_TOKEN")

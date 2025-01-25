@@ -19,14 +19,15 @@ def init_db():
             constitution INTEGER DEFAULT 0,
             wisdom INTEGER DEFAULT 0,
             charisma INTEGER DEFAULT 0,
-            intelligence INTEGER DEFAULT 0
+            intelligence INTEGER DEFAULT 0,
+            level INTEGER DEFAULT 1
         )
         """
     )
     conn.commit()
     conn.close()
 
-# Functions for working with the database
+# Functions for interacting with the database
 def get_user_stats(user_id):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
@@ -41,23 +42,23 @@ def get_user_stats(user_id):
             "Wisdom": row[4],
             "Charisma": row[5],
             "Intelligence": row[6],
+            "Level": row[7]  
         }
     else:
-        return {"Strength": 0, "Dexterity": 0, "Constitution": 0, "Wisdom": 0, "Charisma": 0, "Intelligence": 0}
+        return {"Strength": 0, "Dexterity": 0, "Constitution": 0, "Wisdom": 0, "Charisma": 0, "Intelligence": 0, "Level": 1}
 
 def set_user_stat(user_id, stat_name, value):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute(
         """
-        INSERT INTO user_stats (user_id, strength, dexterity, constitution, wisdom, charisma, intelligence)
-        VALUES (?, 0, 0, 0, 0, 0, 0)
+        INSERT INTO user_stats (user_id, strength, dexterity, constitution, wisdom, charisma, intelligence, level)
+        VALUES (?, 0, 0, 0, 0, 0, 0, 1)
         ON CONFLICT(user_id) DO NOTHING
         """,
         (user_id,)
     )
 
-    # Convert stat_name to lowercase
     stat_columns = {
         "strength": "strength",
         "dexterity": "dexterity",
@@ -65,28 +66,28 @@ def set_user_stat(user_id, stat_name, value):
         "wisdom": "wisdom",
         "charisma": "charisma",
         "intelligence": "intelligence",
+        "level": "level"  
     }
-    column_name = stat_columns.get(stat_name.lower())  # Convert to lowercase
+    column_name = stat_columns.get(stat_name.lower())
 
     if column_name:
         cursor.execute(f"UPDATE user_stats SET {column_name} = ? WHERE user_id = ?", (value, user_id))
     conn.commit()
     conn.close()
 
-# Function to send the list of stats
+# Function to send character list
 async def send_character_list(ctx):
     user_id = str(ctx.author.id)
     user_stats = get_user_stats(user_id)
 
-    view = View()
+    view = View(timeout=600)
 
-    # Function to create buttons with unique callbacks
     def create_button(stat_name):
         button = Button(label=stat_name, style=discord.ButtonStyle.primary)
 
         async def stat_button_callback(interaction: discord.Interaction):
             if interaction.user.id != ctx.author.id:
-                await interaction.response.send_message("This is not your character stats list!", ephemeral=True)
+                await interaction.response.send_message("This is not your character list!", ephemeral=True, )
                 return
 
             stat_modal = Modal(title=f"Set {stat_name}")
@@ -96,12 +97,16 @@ async def send_character_list(ctx):
             async def on_submit(modal_interaction):
                 try:
                     value = int(stat_input.value)
+                    if stat_name == "Level" and (value < 1 or value > 20):  # Level from 1 to 20
+                        await modal_interaction.response.send_message("Level must be between 1 and 20!", ephemeral=True, delete_after=30)
+                        return
+
                     set_user_stat(user_id, stat_name, value)
                     await modal_interaction.response.send_message(
-                        f"{stat_name} set to: {value}", ephemeral=True
+                        f"{stat_name} set to: {value}", ephemeral=True, delete_after=30,
                     )
                 except ValueError:
-                    await modal_interaction.response.send_message("Enter a valid numeric value!", ephemeral=True)
+                    await modal_interaction.response.send_message("Please enter a numerical value!", ephemeral=True, delete_after=30)
 
             stat_modal.on_submit = on_submit
             await interaction.response.send_modal(stat_modal)
@@ -109,25 +114,25 @@ async def send_character_list(ctx):
         button.callback = stat_button_callback
         return button
 
-    # Create buttons for all stats
+    # Add buttons for all stats, including level
     for stat in user_stats:
         view.add_item(create_button(stat))
 
-    await ctx.send("Choose a stat to change:", view=view, delete_after=600)
+    await ctx.send("Choose a stat to modify:", view=view, delete_after=600)
 
-# Database initialization on startup
+# Initialize the database at startup
 init_db()
 
 def setup_character_commands(bot):
     @bot.command(name="character_list", aliases=["cl"])
     async def character_list(ctx):
         try:
-            await ctx.message.delete()  # Delete the user's requst message
+            await ctx.message.delete()
         except discord.errors.Forbidden:
-            pass  # Ignore the error if the bot does not have permission to delete messages
+            pass
+
         await send_character_list(ctx)
 
-    # Register slash command
     @app_commands.command(name="character_list", description="View and modify character stats.")
     async def slash_character_list(interaction: discord.Interaction):
         class ContextShim:

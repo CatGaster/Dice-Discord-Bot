@@ -103,7 +103,7 @@ This Discord bot is designed to assist with tabletop role-playing games (such as
 #### `/character_list` or `!character_list` or `!cl`
 - Displays the current user's attribute list.
 - Supported attributes:
-  - Strength, Dexterity, Constitution, Wisdom, Charisma, Intelligence.
+  - Strength, Dexterity, Constitution, Wisdom, Charisma, Intelligence, Level.
 
 #### Modifying Attributes
 - Click on an attribute button and enter a new value.
@@ -133,6 +133,7 @@ SQLite is used to store character attributes. The database is created automatica
 - `wisdom`: Wisdom.
 - `charisma`: Charisma.
 - `intelligence`: Intelligence.
+- `level`: Character level
 
 ## Dependencies
 
