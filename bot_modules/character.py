@@ -19,7 +19,8 @@ def init_db():
             constitution INTEGER DEFAULT 0,
             wisdom INTEGER DEFAULT 0,
             charisma INTEGER DEFAULT 0,
-            intelligence INTEGER DEFAULT 0
+            intelligence INTEGER DEFAULT 0,
+            level INTEGER DEFAULT 1
         )
         """
     )
@@ -41,23 +42,23 @@ def get_user_stats(user_id):
             "Мудрость": row[4],
             "Харизма": row[5],
             "Интеллект": row[6],
+            "Уровень": row[7]  
         }
     else:
-        return {"Сила": 0, "Ловкость": 0, "Стойкость": 0, "Мудрость": 0, "Харизма": 0, "Интеллект": 0}
+        return {"Сила": 0, "Ловкость": 0, "Стойкость": 0, "Мудрость": 0, "Харизма": 0, "Интеллект": 0, "Уровень": 1}
 
 def set_user_stat(user_id, stat_name, value):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute(
         """
-        INSERT INTO user_stats (user_id, strength, dexterity, constitution, wisdom, charisma, intelligence)
-        VALUES (?, 0, 0, 0, 0, 0, 0)
+        INSERT INTO user_stats (user_id, strength, dexterity, constitution, wisdom, charisma, intelligence, level)
+        VALUES (?, 0, 0, 0, 0, 0, 0, 1)
         ON CONFLICT(user_id) DO NOTHING
         """,
         (user_id,)
     )
 
-    # Приводим stat_name к нижнему регистру
     stat_columns = {
         "сила": "strength",
         "ловкость": "dexterity",
@@ -65,8 +66,9 @@ def set_user_stat(user_id, stat_name, value):
         "мудрость": "wisdom",
         "харизма": "charisma",
         "интеллект": "intelligence",
+        "уровень": "level"  
     }
-    column_name = stat_columns.get(stat_name.lower())  # Приведение к нижнему регистру
+    column_name = stat_columns.get(stat_name.lower())
 
     if column_name:
         cursor.execute(f"UPDATE user_stats SET {column_name} = ? WHERE user_id = ?", (value, user_id))
@@ -78,15 +80,14 @@ async def send_character_list(ctx):
     user_id = str(ctx.author.id)
     user_stats = get_user_stats(user_id)
 
-    view = View(timeout=600) # сообщение перестанет работать и удалиться через 10 минут
+    view = View(timeout=600)
 
-    # Функция для создания кнопок с уникальными callback
     def create_button(stat_name):
         button = Button(label=stat_name, style=discord.ButtonStyle.primary)
 
         async def stat_button_callback(interaction: discord.Interaction):
             if interaction.user.id != ctx.author.id:
-                await interaction.response.send_message("Это не ваш список характеристик!", ephemeral=True)
+                await interaction.response.send_message("Это не ваш список характеристик!", ephemeral=True, )
                 return
 
             stat_modal = Modal(title=f"Установить {stat_name}")
@@ -96,12 +97,16 @@ async def send_character_list(ctx):
             async def on_submit(modal_interaction):
                 try:
                     value = int(stat_input.value)
+                    if stat_name == "Уровень" and (value < 1 or value > 20):  # Уровень от 1 до 20
+                        await modal_interaction.response.send_message("Уровень должен быть от 1 до 20!", ephemeral=True, delete_after=30)
+                        return
+
                     set_user_stat(user_id, stat_name, value)
                     await modal_interaction.response.send_message(
-                        f"Значение {stat_name} установлено: {value}", ephemeral=True
+                        f"Значение {stat_name} установлено: {value}", ephemeral=True, delete_after=30,
                     )
                 except ValueError:
-                    await modal_interaction.response.send_message("Введите числовое значение!", ephemeral=True)
+                    await modal_interaction.response.send_message("Введите числовое значение!", ephemeral=True, delete_after=30)
 
             stat_modal.on_submit = on_submit
             await interaction.response.send_modal(stat_modal)
@@ -109,11 +114,11 @@ async def send_character_list(ctx):
         button.callback = stat_button_callback
         return button
 
-    # Создание кнопок для всех характеристик
+    # Добавляем кнопки для всех характеристик, включая уровень
     for stat in user_stats:
         view.add_item(create_button(stat))
 
-    await ctx.send("Выберите характеристику для изменения:", view=view, delete_after=600)  
+    await ctx.send("Выберите характеристику для изменения:", view=view, delete_after=600)
 
 # Инициализация базы данных при запуске
 init_db()
@@ -122,13 +127,12 @@ def setup_character_commands(bot):
     @bot.command(name="character_list", aliases=["cl"])
     async def character_list(ctx):
         try:
-            await ctx.message.delete() # Удаляем сообщение пользователя, вызвавшего команду
+            await ctx.message.delete()
         except discord.errors.Forbidden:
-            pass  # Игнорируем ошибку, если у бота нет прав на удаление сообщений
+            pass
 
         await send_character_list(ctx)
 
-    # Регистрация слэш-команды
     @app_commands.command(name="character_list", description="Просмотреть и изменить характеристики персонажа.")
     async def slash_character_list(interaction: discord.Interaction):
         class ContextShim:

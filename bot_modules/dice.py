@@ -11,6 +11,18 @@ def roll_dice(sides, rolls=1):
     return [random.randint(1, sides) for _ in range(rolls)]
 
 tts_enabled = False  # По умолчанию TTS отключен
+bonus_mastery = False  # По умолчанию бонус мастерства выключен
+
+# Функция расчёта бонуса мастерства
+def get_proficiency_bonus(level):
+    proficiency_table = {
+        range(1, 5): 2,
+        range(5, 9): 3,
+        range(9, 13): 4,
+        range(13, 17): 5,
+        range(17, 21): 6
+    }
+    return next(bonus for levels, bonus in proficiency_table.items() if level in levels)
 
 # Функция для расчёта модификатора характеристики
 def calculate_modifier(stat_value):
@@ -39,7 +51,7 @@ def setup_dice_commands(bot):
 
     # Помощьная функция для создания кнопок
     async def send_dice_buttons(ctx):
-        global tts_enabled
+        global tts_enabled, bonus_mastery
 
         dice_buttons = [
             Button(label="1d2 🎲", style=discord.ButtonStyle.primary, custom_id="1d2"),
@@ -51,6 +63,13 @@ def setup_dice_commands(bot):
             Button(label="Кастомный кубик", style=discord.ButtonStyle.secondary, custom_id="custom_dice"),
         ]
 
+        # Кнопка бонуса мастерства
+        mastery_button = Button(
+            label=f"Бонус мастерства {'✅' if bonus_mastery else '⬜'}",
+            style=discord.ButtonStyle.secondary,
+            custom_id="toggle_mastery",
+        )
+
         tts_button = Button(
             label="Отключить TTS 🔇" if tts_enabled else "Включить TTS 🔊",
             style=discord.ButtonStyle.danger if tts_enabled else discord.ButtonStyle.success,
@@ -61,6 +80,7 @@ def setup_dice_commands(bot):
         for button in dice_buttons:
             view.add_item(button)
         view.add_item(tts_button)
+        view.add_item(mastery_button)
 
         async def dice_button_callback(interaction: discord.Interaction):
             custom_id = interaction.data["custom_id"]
@@ -101,7 +121,10 @@ def setup_dice_commands(bot):
 
                         if stat_name in user_stats_lower:
                             stat_value = user_stats_lower[stat_name]
-                            modifier = calculate_modifier(stat_value)
+                            if stat_name == "уровень":
+                                modifier = stat_value  # Уровень добавляется как есть
+                            else:
+                                modifier = calculate_modifier(stat_value)  # Остальные характеристики используют модификатор
                             total += modifier
 
                         # Дополнительные кубики (4 строка)
@@ -142,9 +165,16 @@ def setup_dice_commands(bot):
                         if modifier != 0:
                             result_message += f" (+{modifier} {stat_name})" if modifier > 0 else f" ({modifier} {stat_name})"
 
+                        # Если бонус мастерства активен, добавляем его к общему результату
+                        if bonus_mastery:
+                            level = user_stats.get("Уровень", 1)
+                            proficiency_bonus = get_proficiency_bonus(level)
+                            total += proficiency_bonus
+                            result_message += f" (+{proficiency_bonus} БМ)"
+
                         # вывод
                         result_message += f" = {total}"
-                        await modal_interaction.response.send_message(result_message.strip(), tts=tts_enabled,delete_after=1800)
+                        await modal_interaction.response.send_message(result_message.strip(), tts=tts_enabled, delete_after=1800)
                     except ValueError:
                         await modal_interaction.response.send_message("Введите корректные значения!", ephemeral=True)
 
@@ -157,11 +187,32 @@ def setup_dice_commands(bot):
                     rolls = int(match.group(1))
                     results = roll_dice(sides, rolls)
                     total = sum(results)
-
+                    
+                    # Добавляем проверку на бонус мастерства
+                    if bonus_mastery:
+                        user_id = str(interaction.user.id)
+                        user_stats = get_user_stats(user_id)
+                        level = user_stats.get("Уровень", 1)
+                        proficiency_bonus = get_proficiency_bonus(level)
+                        total += proficiency_bonus
+                    
+                    # Формируем сообщение с учетом бонуса
                     if rolls == 1:
-                        await interaction.response.send_message(f"{custom_id}: {results[0]}", tts=tts_enabled, delete_after=1800)
+                        message = f"{custom_id}: {results[0]}"
                     else:
-                        await interaction.response.send_message(f"{custom_id}: {', '.join(map(str, results))} = {total}", tts=tts_enabled, delete_after=1800)
+                        message = f"{custom_id}: {', '.join(map(str, results))} = {total}"
+                    
+                    # Добавляем информацию о бонусе если он активен
+                    if bonus_mastery:
+                        message += f" +{proficiency_bonus} (БМ) = {total}"
+                    
+                    await interaction.response.send_message(message, tts=tts_enabled, delete_after=1800)
+
+        async def toggle_mastery_callback(interaction: discord.Interaction):
+            global bonus_mastery
+            bonus_mastery = not bonus_mastery
+            mastery_button.label = f"Бонус мастерства {'✅' if bonus_mastery else '⬜'}"
+            await interaction.response.edit_message(content="Настройки обновлены.", view=view)
 
         async def tts_button_callback(interaction: discord.Interaction):
             global tts_enabled
@@ -170,10 +221,12 @@ def setup_dice_commands(bot):
             tts_button.style = discord.ButtonStyle.danger if tts_enabled else discord.ButtonStyle.success
             await interaction.response.edit_message(content="Настройки обновлены.", view=view)
 
+        # Обработчики кнопок
         for button in dice_buttons:
             button.callback = dice_button_callback
+        mastery_button.callback = toggle_mastery_callback
         tts_button.callback = tts_button_callback
 
-        await ctx.send("Выберите кубик для броска:", view=view, delete_after=3600) 
+        await ctx.send("Выберите кубик для броска:", view=view, delete_after=3600)
 
     bot.tree.add_command(slash_roll_dice)
