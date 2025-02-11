@@ -75,19 +75,20 @@ def set_user_stat(user_id, stat_name, value):
     conn.commit()
     conn.close()
 
-# Функция для отправки списка характеристик
+# Функция для отправки списка характеристик с кнопками
 async def send_character_list(ctx):
     user_id = str(ctx.author.id)
     user_stats = get_user_stats(user_id)
 
     view = View(timeout=600)
 
+    # Функция для создания кнопки изменения конкретной характеристики
     def create_button(stat_name):
         button = Button(label=stat_name, style=discord.ButtonStyle.primary)
 
         async def stat_button_callback(interaction: discord.Interaction):
             if interaction.user.id != ctx.author.id:
-                await interaction.response.send_message("Это не ваш список характеристик!", ephemeral=True, )
+                await interaction.response.send_message("Это не ваш список характеристик!", ephemeral=True)
                 return
 
             stat_modal = Modal(title=f"Установить {stat_name}")
@@ -118,7 +119,22 @@ async def send_character_list(ctx):
     for stat in user_stats:
         view.add_item(create_button(stat))
 
-    await ctx.send("Выберите характеристику для изменения:", view=view, delete_after=600)
+    
+    show_stats_button = Button(label="Показать все характеристики", style=discord.ButtonStyle.secondary)
+
+    async def show_stats_callback(interaction: discord.Interaction):
+        if interaction.user.id != ctx.author.id:
+            await interaction.response.send_message("Это не ваш профиль!", ephemeral=True)
+            return
+
+        stats = get_user_stats(str(ctx.author.id))
+        stats_message = "\n".join([f"{key}: {value}" for key, value in stats.items()])
+        await interaction.response.send_message(f"Ваши характеристики:\n{stats_message}", ephemeral=True)
+
+    show_stats_button.callback = show_stats_callback
+    view.add_item(show_stats_button)
+
+    await ctx.send("Выберите характеристику для изменения или нажмите кнопку для просмотра всех характеристик:", view=view, delete_after=600)
 
 # Инициализация базы данных при запуске
 init_db()
