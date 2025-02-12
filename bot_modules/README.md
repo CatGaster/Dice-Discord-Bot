@@ -339,6 +339,9 @@
 
 ## Зависимости
 
+### Переменные окружения:
+- `OPENROUTER_API_KEY – ключ для доступа к API OpenRouter.`
+
 - **Библиотеки:**
 - `discord`
 - `discord.ext.commands`
@@ -346,7 +349,3 @@
 - `dotenv`
 - `os`
 - `openai`
-
-
-### Переменные окружения:
-- `OPENROUTER_API_KEY – ключ для доступа к API OpenRouter.`
