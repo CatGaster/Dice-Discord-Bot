@@ -4,7 +4,7 @@
 - [dice.py module](#dicepy-module)
 - [character.py module](#characterpy-module)
 - [clear.py module](#clearpy-module)
-
+- [wise_wizardpy-module](#wise_wizardpy-module)
 ---
 
 # <a name="dicepy-module"></a>dice.py module
@@ -254,3 +254,39 @@ The `clear.py` module provides functionality for deleting messages sent by the b
 ### Limitations
 - The maximum number of messages that can be deleted in a single operation is 20.
 - The bot must have the `Manage Messages` permission in the channel.
+
+-----
+
+
+# <a name="wise_wizardpy-module"></a>wise_wizard.py module
+
+The wise_wizard.py module provides functionality for interacting with the ancient mage Baltazar, who answers questions in the style of Dungeons & Dragons using archaic language, proverbs, and metaphors via OpenAI.
+
+## Main Features
+
+### **Ask the Ancient Mage Baltazar the Wise**
+
+- **Addressing the Wise Mage Baltazar:**
+The module sends questions to the OpenRouter API with a predefined system prompt that sets the response style as if spoken by the ancient wizard Baltazar.
+
+### 1. **/wise_wizard (Slash Command)**
+- **Description:** Allows you to interact with the bot.
+- **Usage Example:**
+  - "/wise_wizard Tell me about a shortsword" — Ah, a shortsword! A weapon worthy of the nimble and cunning warriors. It is light in weight, swift in battle like a snake in the grass. Its damage is 1d6, and if the hand wielding it is skillful, the Dexterity modifier is added to the damage. For it is not brute strength but skill that decides the outcome of a duel.
+  
+### 2. !wise_wizard or !ask (Prefix Command)
+- **Description:** Functions similarly to the slash command but is invoked using a prefix.
+
+
+### Dependencies
+- Libraries:
+- discord
+- discord.ext.commands
+- asyncio
+- dotenv
+- os
+- openai
+
+
+### Environment Variables:
+- `OPENROUTER_API_KEY – the key to access the OpenRouter API`.

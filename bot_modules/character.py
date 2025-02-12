@@ -75,29 +75,30 @@ def set_user_stat(user_id, stat_name, value):
     conn.commit()
     conn.close()
 
-# Function to send character list
+# Function to send the stats list with buttons
 async def send_character_list(ctx):
     user_id = str(ctx.author.id)
     user_stats = get_user_stats(user_id)
 
     view = View(timeout=600)
 
+    # Function to create a button for modifying a specific stat
     def create_button(stat_name):
         button = Button(label=stat_name, style=discord.ButtonStyle.primary)
 
         async def stat_button_callback(interaction: discord.Interaction):
             if interaction.user.id != ctx.author.id:
-                await interaction.response.send_message("This is not your character list!", ephemeral=True, )
+                await interaction.response.send_message("This is not your stats list!", ephemeral=True)
                 return
 
             stat_modal = Modal(title=f"Set {stat_name}")
-            stat_input = TextInput(label=f"{stat_name}", placeholder="Enter value", required=True)
+            stat_input = TextInput(label=f"{stat_name}", placeholder="Enter a value", required=True)
             stat_modal.add_item(stat_input)
 
             async def on_submit(modal_interaction):
                 try:
                     value = int(stat_input.value)
-                    if stat_name == "Level" and (value < 1 or value > 20):  # Level from 1 to 20
+                    if stat_name == "Level" and (value < 1 or value > 20):  # Level must be between 1 and 20
                         await modal_interaction.response.send_message("Level must be between 1 and 20!", ephemeral=True, delete_after=30)
                         return
 
@@ -106,7 +107,7 @@ async def send_character_list(ctx):
                         f"{stat_name} set to: {value}", ephemeral=True, delete_after=30,
                     )
                 except ValueError:
-                    await modal_interaction.response.send_message("Please enter a numerical value!", ephemeral=True, delete_after=30)
+                    await modal_interaction.response.send_message("Please enter a numeric value!", ephemeral=True, delete_after=30)
 
             stat_modal.on_submit = on_submit
             await interaction.response.send_modal(stat_modal)
@@ -114,13 +115,27 @@ async def send_character_list(ctx):
         button.callback = stat_button_callback
         return button
 
-    # Add buttons for all stats, including level
+    # Add buttons for all stats, including Level
     for stat in user_stats:
         view.add_item(create_button(stat))
 
-    await ctx.send("Choose a stat to modify:", view=view, delete_after=600)
+    show_stats_button = Button(label="Show all stats", style=discord.ButtonStyle.secondary)
 
-# Initialize the database at startup
+    async def show_stats_callback(interaction: discord.Interaction):
+        if interaction.user.id != ctx.author.id:
+            await interaction.response.send_message("This is not your profile!", ephemeral=True)
+            return
+
+        stats = get_user_stats(str(ctx.author.id))
+        stats_message = "\n".join([f"{key}: {value}" for key, value in stats.items()])
+        await interaction.response.send_message(f"Your stats:\n{stats_message}", ephemeral=True)
+
+    show_stats_button.callback = show_stats_callback
+    view.add_item(show_stats_button)
+
+    await ctx.send("Choose a stat to modify or press the button to view all stats:", view=view, delete_after=600)
+
+# Initialize the database on startup
 init_db()
 
 def setup_character_commands(bot):
