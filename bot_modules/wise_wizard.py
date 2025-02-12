@@ -23,10 +23,6 @@ def format_question(user_question: str) -> str:
     return f"{user_question}\n\n⚠️ В ответе не размышляй, сразу отвечай, как если бы истина была известна тебе изначально."
 
 def sync_openai_request(question: str, system_prompt: str) -> str:
-    """
-    Синхронный запрос к API OpenRouter для получения ответа.
-    Обработка ошибок осуществляется через try/except.
-    """
     try:
         completion = client.chat.completions.create(
             model="deepseek/deepseek-chat:free",
@@ -34,13 +30,17 @@ def sync_openai_request(question: str, system_prompt: str) -> str:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": question}
             ],
-            temperature=0.5,  # Степень креативности
-            max_tokens=800    # Ограничение на длину ответа
+            temperature=0.5,
+            max_tokens=800
         )
-        return completion.choices[0].message.content
+        # Проверка на наличие ответа
+        if completion and completion.choices and completion.choices[0].message:
+            return completion.choices[0].message.content
+        else:
+            return "🌪️ Бальтозар не смог извлечь мудрость из космоса!"
     except Exception as e:
         print(f"Ошибка при обращении к OpenAI: {e}")
-        return "🌪️ Бальтозар не смог извлечь мудрость из космоса!"
+        return "🌪️ Бальтозар не может ответить из-за магического сбоя!"
 
 async def get_baltazar_response(question: str) -> str:
     """
